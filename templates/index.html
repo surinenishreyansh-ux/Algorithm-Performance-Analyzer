@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorting Complexity Comparator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <div class="badge">Performance Analysis</div>
+            <h1>Algorithm Comparator</h1>
+            <p>Analyze and compare the computational efficiency of sorting algorithms in real-time.</p>
+        </header>
+
+        <main>
+            <div class="input-section">
+                <label for="numbers">Input Sequence</label>
+                <div class="input-wrapper">
+                    <input type="text" id="numbers" placeholder="e.g., 5, 2, 9, 1, 5, 6, 8, 3, 10" autocomplete="off">
+                    <button id="generateBtn" onclick="generateRandom()" class="btn-secondary">Random</button>
+                </div>
+                <button onclick="compareSorts()" class="btn-primary" id="compareBtn">
+                    <span class="btn-text">Run Analysis</span>
+                    <div class="loader" id="loader"></div>
+                </button>
+            </div>
+
+            <div class="error-message" id="error"></div>
+
+            <div class="results-container" id="results">
+                <!-- Results will be injected here via JS -->
+            </div>
+        </main>
+    </div>
+
+<script>
+    function generateRandom() {
+        const count = Math.floor(Math.random() * 2000) + 1000;
+        const arr = Array.from({length: count}, () => Math.floor(Math.random() * 10000));
+        document.getElementById("numbers").value = arr.join(", ");
+    }
+
+    async function compareSorts() {
+        const numbers = document.getElementById("numbers").value;
+        const btnText = document.querySelector('.btn-text');
+        const loader = document.getElementById('loader');
+        const errorDiv = document.getElementById('error');
+        const resultsDiv = document.getElementById('results');
+
+        if (!numbers.trim()) {
+            errorDiv.textContent = "Please enter some numbers or generate a random sequence.";
+            errorDiv.style.display = "block";
+            return;
+        }
+
+        errorDiv.style.display = "none";
+        btnText.style.display = 'none';
+        loader.style.display = 'block';
+        resultsDiv.classList.remove('show');
+
+        try {
+            const response = await fetch('/sort', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ numbers })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Determine the winner
+                const bTime = parseFloat(data.bubble_time);
+                const mTime = parseFloat(data.merge_time);
+                const bubbleWinner = bTime <= mTime ? 'winner' : '';
+                const mergeWinner = mTime < bTime ? 'winner' : '';
+
+                resultsDiv.innerHTML = `
+                    <div class="card ${bubbleWinner}" style="--animation-order: 1">
+                        <div class="card-header">
+                            <h3>Bubble Sort</h3>
+                            ${bubbleWinner ? '<span class="fastest-badge">Fastest</span>' : ''}
+                        </div>
+                        <div class="metrics">
+                            <div class="metric">
+                                <span class="metric-label">Time Complexity</span>
+                                <span class="metric-value">${data.bubble_complexity}</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Execution Time</span>
+                                <span class="metric-value highlight">${data.bubble_time} <span class="unit">sec</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card ${mergeWinner}" style="--animation-order: 2">
+                        <div class="card-header">
+                            <h3>Merge Sort</h3>
+                            ${mergeWinner ? '<span class="fastest-badge">Fastest</span>' : ''}
+                        </div>
+                        <div class="metrics">
+                            <div class="metric">
+                                <span class="metric-label">Time Complexity</span>
+                                <span class="metric-value">${data.merge_complexity}</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Execution Time</span>
+                                <span class="metric-value highlight">${data.merge_time} <span class="unit">sec</span></span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Trigger reflow to restart animation
+                void resultsDiv.offsetWidth;
+                resultsDiv.classList.add('show');
+            } else {
+                errorDiv.textContent = data.error || "An error occurred during processing.";
+                errorDiv.style.display = "block";
+            }
+        } catch (error) {
+            errorDiv.textContent = "Failed to connect to the server.";
+            errorDiv.style.display = "block";
+        } finally {
+            btnText.style.display = 'block';
+            loader.style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>
